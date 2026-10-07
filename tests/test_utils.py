@@ -167,6 +167,28 @@ class UtilsTestCase(TestCase):
         ic = factor_information_coefficient(factor_data)
         self.assertEqual(len(ic), fp.index.get_level_values("date").nunique())
 
+    def test_compute_forward_returns_intraday_label_ignores_overnight_gap(self):
+        """The label is the modal bar, even when the last sampled
+        interval is the overnight gap (previously labeled "21h")."""
+        hours = []
+        for day in date_range("2017-01-12", periods=3, freq="B"):
+            for hour in (9, 10, 11, 12):
+                hours.append(day + Timedelta(hours=hour, minutes=30))
+        idx = pd.DatetimeIndex(hours, name="date")
+        prices = DataFrame(
+            {"A": [float(i) for i in range(1, len(idx) + 1)],
+             "B": [float(i) for i in range(1, len(idx) + 1)]},
+            index=idx,
+        )
+        # Factor dates end on a day's last bar, so the last sampled
+        # 1-bar interval is 12:30 -> next day 09:30.
+        factor = prices.iloc[:8].stack()
+        factor.index = factor.index.set_names(["date", "asset"])
+
+        fp = compute_forward_returns(factor, prices, periods=(1,), filter_zscore=None)
+
+        self.assertEqual(list(fp.columns), ["1h"])
+
     def test_compute_forward_returns_requires_future_prices(self):
         dr = date_range(start="2020-01-01", periods=2, freq="D")
         prices = DataFrame({"A": [1.0, 2.0]}, index=dr)

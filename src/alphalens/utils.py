@@ -323,7 +323,13 @@ def compute_forward_returns(
         # several entries in order to find out the most likely period length
         # (in case the user passed inconsistent data).
         #
-        days_diffs = []
+        # The length has to be the modal timedelta, not the last sample with
+        # its day-count snapped to the mode. On intraday data the last sample
+        # in this window is often the overnight gap (for example 21h). Snapping
+        # only the day component leaves that gap as the column name, so a
+        # 1-bar return is labeled "21h" and later annualized as 21 hours.
+        #
+        period_lengths = []
         for i in range(30):
             if i >= len(forward_returns.index):
                 break
@@ -332,20 +338,18 @@ def compute_forward_returns(
                 continue
             start = prices.index[p_idx]
             end = prices.index[p_idx + period]
-            period_len = diff_custom_calendar_timedeltas(start, end, freq)
-            days_diffs.append(period_len.components.days)
+            period_lengths.append(diff_custom_calendar_timedeltas(start, end, freq))
 
-        if not days_diffs:
+        if not period_lengths:
             raise ValueError(
                 "Not enough price data to compute %s-period forward "
                 "returns. Prices must extend past the factor dates by "
                 "at least that many observations." % period
             )
 
-        delta_days = (
-            period_len.components.days - mode(days_diffs, keepdims=True).mode[0]
-        )
-        period_len -= pd.Timedelta(days=delta_days)
+        period_ns = [int(length.value) for length in period_lengths]
+        modal_ns = int(mode(period_ns, keepdims=True).mode[0])
+        period_len = pd.Timedelta(modal_ns, unit="ns")
         label = timedelta_to_string(period_len)
 
         column_list.append(label)
