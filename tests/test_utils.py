@@ -32,6 +32,7 @@ from parameterized import parameterized
 
 from alphalens.performance import factor_information_coefficient, factor_returns
 from alphalens.utils import (
+    backshift_returns_series,
     get_clean_factor_and_forward_returns,
     compute_forward_returns,
     get_forward_returns_columns,
@@ -195,6 +196,27 @@ class UtilsTestCase(TestCase):
         self.assertAlmostEqual(fp.loc[(dr[0], "A"), "1D"], 0.0)
         self.assertAlmostEqual(fp.loc[(dr[1], "A"), "1D"], 1.0)
         self.assertAlmostEqual(fp.loc[(dr[0], "B"), "1D"], 0.0)
+
+    def test_backshift_returns_series_shifts_dates_not_values(self):
+        """
+        A backward-looking return recorded on date t becomes the forward
+        return on date t-N. The asset order is unchanged.
+        """
+        dates = date_range("2020-01-01", periods=4, freq="D", name="date")
+        index = MultiIndex.from_product(
+            [dates, ["A", "B"]], names=["date", "asset"]
+        )
+        series = Series(list(range(8)), index=index, dtype=float)
+
+        shifted = backshift_returns_series(series, 1)
+
+        expected = Series(
+            [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+            index=MultiIndex.from_product(
+                [dates[:-1], ["A", "B"]], names=["date", "asset"]
+            ),
+        )
+        assert_series_equal(shifted, expected)
 
     def test_get_forward_returns_columns_accepts_nanoseconds(self):
         columns = pd.Index(["1D", "1ns", "1us", "1ms", "30m", "factor"])

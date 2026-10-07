@@ -397,7 +397,7 @@ def backshift_returns_series(series, N):
     """
     ix = series.index
     dates, sids = ix.levels
-    date_labels, sid_labels = map(np.array, ix.labels)
+    date_labels, sid_labels = map(np.array, ix.codes)
 
     # Output date labels will contain the all but the last N dates.
     new_dates = dates[:-N]
