@@ -34,6 +34,7 @@ from alphalens.performance import factor_information_coefficient, factor_returns
 from alphalens.utils import (
     get_clean_factor_and_forward_returns,
     compute_forward_returns,
+    get_forward_returns_columns,
     quantize_factor,
 )
 
@@ -194,6 +195,13 @@ class UtilsTestCase(TestCase):
         self.assertAlmostEqual(fp.loc[(dr[0], "A"), "1D"], 0.0)
         self.assertAlmostEqual(fp.loc[(dr[1], "A"), "1D"], 1.0)
         self.assertAlmostEqual(fp.loc[(dr[0], "B"), "1D"], 0.0)
+
+    def test_get_forward_returns_columns_accepts_nanoseconds(self):
+        columns = pd.Index(["1D", "1ns", "1us", "1ms", "30m", "factor"])
+        self.assertEqual(
+            list(get_forward_returns_columns(columns)),
+            ["1D", "1ns", "1us", "1ms", "30m"],
+        )
 
     @parameterized.expand(
         [
