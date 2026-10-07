@@ -303,11 +303,16 @@ def compute_forward_returns(
     raw_values_dict = {}
     column_list = []
 
+    # pandas 2.1 deprecated pct_change(fill_method='pad') and will stop
+    # forward-filling missing prices. Fill explicitly so a gap does not
+    # erase the return across it, which is what this function has always done.
+    filled_prices = prices.ffill()
+
     for period in sorted(periods):
         if cumulative_returns:
-            returns = prices.pct_change(period)
+            returns = filled_prices.pct_change(period, fill_method=None)
         else:
-            returns = prices.pct_change()
+            returns = filled_prices.pct_change(fill_method=None)
 
         forward_returns = returns.shift(-period).reindex(factor_dateindex)
 

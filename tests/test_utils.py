@@ -171,6 +171,30 @@ class UtilsTestCase(TestCase):
         with self.assertRaises(ValueError):
             compute_forward_returns(factor, prices, periods=(5,), filter_zscore=None)
 
+    def test_compute_forward_returns_bridges_missing_prices(self):
+        """
+        A missing price is held at the previous price before the return is
+        computed, so the move across the gap is kept on the next timestamp.
+        """
+        dr = date_range(start="2020-01-01", periods=4, freq="D")
+        prices = DataFrame(
+            {"A": [1.0, nan, 2.0, 2.0], "B": [1.0, 1.0, 1.0, 1.0]}, index=dr
+        )
+        factor = Series(
+            1.0,
+            index=MultiIndex.from_product(
+                [dr[:2], ["A", "B"]], names=["date", "asset"]
+            ),
+        )
+
+        fp = compute_forward_returns(
+            factor, prices, periods=(1,), filter_zscore=None
+        )
+
+        self.assertAlmostEqual(fp.loc[(dr[0], "A"), "1D"], 0.0)
+        self.assertAlmostEqual(fp.loc[(dr[1], "A"), "1D"], 1.0)
+        self.assertAlmostEqual(fp.loc[(dr[0], "B"), "1D"], 0.0)
+
     @parameterized.expand(
         [
             (factor_data, 4, None, False, False, [1, 2, 3, 4, 4, 3, 2, 1]),
